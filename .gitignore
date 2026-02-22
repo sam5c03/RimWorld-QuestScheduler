@@ -363,7 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # backupfolder
-!Ultimatebackup/
+Ultimatebackup/
 bin/
 obj/
 .csproj
