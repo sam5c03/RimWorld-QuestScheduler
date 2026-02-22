@@ -25,6 +25,21 @@ namespace QuestScheduler
                 pawn.RaceProps.FleshType.defName.Contains("Entity")) return;
 
             bool isAnimal = pawn.RaceProps != null && pawn.RaceProps.Animal;
+
+            // --- 新增核心邏輯：如果是透過你的自定義按鈕生成的獸群，無條件強制移除狂亂症 (Scaria) ---
+            if (isAnimal && CustomRaidGenerator.isSpawningAnimal)
+            {
+                if (pawn.health != null && pawn.health.hediffSet != null)
+                {
+                    Hediff scaria = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.Scaria);
+                    if (scaria != null)
+                    {
+                        pawn.health.RemoveHediff(scaria);
+                    }
+                }
+            }
+            // ---------------------------------------------------------------------------------
+
             bool shouldStrip = (isAnimal && QuestSchedulerMod.settings.stripAnimals) || (!isAnimal && QuestSchedulerMod.settings.stripEnemies);
             bool shouldParalyze = (isAnimal && QuestSchedulerMod.settings.paralysisAnimals) || (!isAnimal && QuestSchedulerMod.settings.paralysisEnemies);
 
