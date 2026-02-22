@@ -74,12 +74,21 @@ namespace QuestScheduler
     {
         private Map map; private Faction faction; private float points; private XenotypeDef selectedXenotype; private int minAge; private int maxAge; private float maleRatio;
         public Dialog_RaidSettings(Map map, Faction faction, float points) { this.map = map; this.faction = faction; this.points = points; this.doCloseX = true; this.forcePause = true; this.absorbInputAroundWindow = true; this.selectedXenotype = QuestSchedulerMod.settings.presetXenotype; this.minAge = QuestSchedulerMod.settings.presetAgeMin; this.maxAge = QuestSchedulerMod.settings.presetAgeMax; this.maleRatio = QuestSchedulerMod.settings.presetMaleRatio; }
-        public override Vector2 InitialSize => new Vector2(400f, 450f);
+        public override Vector2 InitialSize => new Vector2(400f, 480f); // 稍微加高以容納新佈局
         public override void DoWindowContents(Rect inRect)
         {
             Listing_Standard listing = new Listing_Standard(); listing.Begin(inRect);
-            Text.Font = GameFont.Medium; listing.Label("自定襲擊詳細設定"); Text.Font = GameFont.Small; listing.GapLine(); listing.Label($"目標派系: {faction.Name} ({faction.PlayerRelationKind.GetLabel()})");
-            listing.Label($"襲擊點數: {points:F0} P"); points = listing.Slider(points, 100f, 20000f); listing.Gap(10f);
+            Text.Font = GameFont.Medium; listing.Label("自定襲擊詳細設定"); Text.Font = GameFont.Small; listing.GapLine();
+            listing.Label($"目標派系: {faction.Name} ({faction.PlayerRelationKind.GetLabel()})");
+
+            listing.Label($"襲擊點數: {points:F0} P");
+            Rect ptsRect = listing.GetRect(30f);
+            string ptsBuf = points.ToString("F0");
+            // 左側 30% 輸入數字，右側 65% 拖動滑桿
+            Widgets.TextFieldNumeric(ptsRect.LeftPart(0.3f), ref points, ref ptsBuf, 100f, 100000f);
+            points = Widgets.HorizontalSlider(ptsRect.RightPart(0.65f), points, 100f, 20000f);
+
+            listing.Gap(10f);
             Rect xenoRect = listing.GetRect(30f); Widgets.Label(xenoRect.LeftPart(0.3f), "選擇人種:");
             if (Widgets.ButtonText(xenoRect.RightPart(0.65f), selectedXenotype?.LabelCap ?? "隨機/原樣")) { List<FloatMenuOption> xOpts = new List<FloatMenuOption> { new FloatMenuOption("隨機/原樣", () => selectedXenotype = null) }; foreach (var x in DefDatabase<XenotypeDef>.AllDefs.OrderBy(d => d.label)) xOpts.Add(new FloatMenuOption(x.LabelCap, () => selectedXenotype = x, x.Icon, Color.white)); Find.WindowStack.Add(new FloatMenu(xOpts)); }
             listing.Gap(10f); listing.Label($"年齡範圍: {minAge} - {maxAge}"); Rect ageRect = listing.GetRect(28f); IntRange ageRange = new IntRange(minAge, maxAge); Widgets.IntRange(ageRect, 881, ref ageRange, 14, 120); minAge = ageRange.min; maxAge = ageRange.max; listing.Gap(10f);
@@ -88,6 +97,57 @@ namespace QuestScheduler
             listing.End();
         }
     }
+
+    public class Dialog_AnimalRaidSettings : Window
+    {
+        private Map map;
+        private PawnKindDef animalKind;
+        private float points;
+
+        public Dialog_AnimalRaidSettings(Map map, PawnKindDef animalKind, float initialPoints)
+        {
+            this.map = map;
+            this.animalKind = animalKind;
+            this.points = initialPoints;
+            this.doCloseX = true;
+            this.forcePause = true;
+            this.absorbInputAroundWindow = true;
+        }
+
+        public override Vector2 InitialSize => new Vector2(400f, 260f);
+
+        public override void DoWindowContents(Rect inRect)
+        {
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(inRect);
+
+            Text.Font = GameFont.Medium;
+            listing.Label("自定義癱瘓獸群設定");
+            Text.Font = GameFont.Small;
+            listing.GapLine();
+
+            listing.Label($"目標生物: {animalKind.LabelCap}");
+            listing.Gap(10f);
+
+            listing.Label($"襲擊點數: {points:F0} P");
+            Rect ptsRect = listing.GetRect(30f);
+            string ptsBuf = points.ToString("F0");
+            // 同樣採用 數字輸入 + 滑桿 佈局
+            Widgets.TextFieldNumeric(ptsRect.LeftPart(0.3f), ref points, ref ptsBuf, 100f, 50000f);
+            points = Widgets.HorizontalSlider(ptsRect.RightPart(0.65f), points, 100f, 20000f);
+
+            listing.Gap(25f);
+
+            if (listing.ButtonText("確認並生成獸群"))
+            {
+                CustomRaidGenerator.GenerateAnimalRaid(map, animalKind, points);
+                this.Close();
+            }
+
+            listing.End();
+        }
+    }
+
 
     public class Dialog_TraitBlacklist : Window
     {

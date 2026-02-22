@@ -23,6 +23,10 @@ namespace QuestScheduler
         [HarmonyPrefix]
         public static void Prefix(ref PawnGenerationRequest request)
         {
+            // --- 新增：環境檢查 ---
+            // 僅在玩家正式開始遊戲後才介入，避免在世界生成階段(生成派系領袖)與其他 Mod 衝突
+            if (Current.ProgramState != ProgramState.Playing) return;
+
             if (IsCustomSiteGeneration(request.Tile))
             {
                 if (!request.FixedBiologicalAge.HasValue)
@@ -43,6 +47,13 @@ namespace QuestScheduler
         [HarmonyPostfix]
         public static void Postfix(ref Pawn __result, PawnGenerationRequest request)
         {
+            // --- 新增：安全防護檢查 ---
+            // 1. 確保不在世界生成階段執行
+            if (Current.ProgramState != ProgramState.Playing) return;
+            // 2. 確保小人生成成功且未被其他 Mod 丟棄/毀滅 (解決 Sequence contains no elements 報錯)
+            if (__result == null || __result.Destroyed) return;
+
+            // 原有功能代碼完全保留
             if (IsCustomSiteGeneration(request.Tile) && __result?.story != null)
             {
                 if (request.KindDef != null && request.KindDef.factionLeader) return;
@@ -189,7 +200,7 @@ namespace QuestScheduler
             }
             pOpts.Add(new FloatMenuOption("<b>自定義點數...</b>", () =>
             {
-                CustomRaidGenerator.GenerateAnimalRaid(m, animal, 3000f);
+                Find.WindowStack.Add(new Dialog_AnimalRaidSettings(m, animal, 3000f));
             }));
             Find.WindowStack.Add(new FloatMenu(pOpts));
         }
