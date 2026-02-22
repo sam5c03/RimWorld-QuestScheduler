@@ -73,8 +73,20 @@ namespace QuestScheduler
     public class Dialog_RaidSettings : Window
     {
         private Map map; private Faction faction; private float points; private XenotypeDef selectedXenotype; private int minAge; private int maxAge; private float maleRatio;
-        public Dialog_RaidSettings(Map map, Faction faction, float points) { this.map = map; this.faction = faction; this.points = points; this.doCloseX = true; this.forcePause = true; this.absorbInputAroundWindow = true; this.selectedXenotype = QuestSchedulerMod.settings.presetXenotype; this.minAge = QuestSchedulerMod.settings.presetAgeMin; this.maxAge = QuestSchedulerMod.settings.presetAgeMax; this.maleRatio = QuestSchedulerMod.settings.presetMaleRatio; }
-        public override Vector2 InitialSize => new Vector2(400f, 480f); // 稍微加高以容納新佈局
+        private string ptsBuf; // 【新增】持久緩衝區，防止刪除時跳回預設值
+
+        public Dialog_RaidSettings(Map map, Faction faction, float points)
+        {
+            this.map = map; this.faction = faction; this.points = points;
+            this.ptsBuf = points.ToString("F0"); // 初始化緩衝區
+            this.doCloseX = true; this.forcePause = true; this.absorbInputAroundWindow = true;
+            this.selectedXenotype = QuestSchedulerMod.settings.presetXenotype;
+            this.minAge = QuestSchedulerMod.settings.presetAgeMin;
+            this.maxAge = QuestSchedulerMod.settings.presetAgeMax;
+            this.maleRatio = QuestSchedulerMod.settings.presetMaleRatio;
+        }
+
+        public override Vector2 InitialSize => new Vector2(400f, 480f);
         public override void DoWindowContents(Rect inRect)
         {
             Listing_Standard listing = new Listing_Standard(); listing.Begin(inRect);
@@ -83,10 +95,11 @@ namespace QuestScheduler
 
             listing.Label($"襲擊點數: {points:F0} P");
             Rect ptsRect = listing.GetRect(30f);
-            string ptsBuf = points.ToString("F0");
-            // 左側 30% 輸入數字，右側 65% 拖動滑桿
+            // 使用成員變數 ptsBuf 進行輸入
             Widgets.TextFieldNumeric(ptsRect.LeftPart(0.3f), ref points, ref ptsBuf, 100f, 100000f);
+            float oldPts = points;
             points = Widgets.HorizontalSlider(ptsRect.RightPart(0.65f), points, 100f, 20000f);
+            if (points != oldPts) ptsBuf = points.ToString("F0"); // 滑桿移動時同步更新緩衝區
 
             listing.Gap(10f);
             Rect xenoRect = listing.GetRect(30f); Widgets.Label(xenoRect.LeftPart(0.3f), "選擇人種:");
@@ -100,9 +113,11 @@ namespace QuestScheduler
 
     public class Dialog_AnimalRaidSettings : Window
     {
-        private Map map;
-        private PawnKindDef animalKind;
+        private Map map; 
+        private PawnKindDef animalKind; 
         private float points;
+        private string ptsBuf; // 【新增】持久緩衝區
+        private bool keepTame = false; // 【保留】原有的開關功能
 
         public Dialog_AnimalRaidSettings(Map map, PawnKindDef animalKind, float initialPoints)
         {
@@ -114,7 +129,7 @@ namespace QuestScheduler
             this.absorbInputAroundWindow = true;
         }
 
-        public override Vector2 InitialSize => new Vector2(400f, 260f);
+        public override Vector2 InitialSize => new Vector2(400f, 300f);
 
         public override void DoWindowContents(Rect inRect)
         {
@@ -126,21 +141,25 @@ namespace QuestScheduler
             Text.Font = GameFont.Small;
             listing.GapLine();
 
-            listing.Label($"目標生物: {animalKind.LabelCap}");
+            listing.Label($"生物類型: {animalKind.LabelCap}");
             listing.Gap(10f);
 
             listing.Label($"襲擊點數: {points:F0} P");
             Rect ptsRect = listing.GetRect(30f);
             string ptsBuf = points.ToString("F0");
-            // 同樣採用 數字輸入 + 滑桿 佈局
             Widgets.TextFieldNumeric(ptsRect.LeftPart(0.3f), ref points, ref ptsBuf, 100f, 50000f);
             points = Widgets.HorizontalSlider(ptsRect.RightPart(0.65f), points, 100f, 20000f);
+
+            listing.Gap(15f);
+
+            // --- 新增溫馴開關 ---
+            listing.CheckboxLabeled("生成動物保持溫馴 (不攻擊)", ref keepTame, "開啟：動物生成後會移除獵人狀態，安靜遊蕩。\n關閉：動物會維持獵人狀態主動攻擊。");
 
             listing.Gap(25f);
 
             if (listing.ButtonText("確認並生成獸群"))
             {
-                CustomRaidGenerator.GenerateAnimalRaid(map, animalKind, points);
+                CustomRaidGenerator.GenerateAnimalRaid(map, animalKind, points, keepTame);
                 this.Close();
             }
 

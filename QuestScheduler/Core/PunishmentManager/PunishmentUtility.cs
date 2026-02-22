@@ -1,5 +1,6 @@
 ﻿using RimWorld;
 using System.Collections.Generic;
+using System.Linq; // 確保加入此引用
 using Verse;
 
 namespace QuestScheduler
@@ -19,27 +20,36 @@ namespace QuestScheduler
         {
             if (pawn == null || pawn.Dead || !pawn.Spawned) return;
 
-            if (pawn.mutant != null) return;
-            if (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid) return;
+            // --- 保留您原本的「特殊生物過濾」安全檢查 ---
+            if (pawn.mutant != null) return; // 不處理突變體
+            if (pawn.RaceProps != null && pawn.RaceProps.IsMechanoid) return; // 不處理機械族
             if (pawn.RaceProps != null && pawn.RaceProps.FleshType != null &&
-                pawn.RaceProps.FleshType.defName.Contains("Entity")) return;
+                pawn.RaceProps.FleshType.defName.Contains("Entity")) return; // 不處理實體生物
 
             bool isAnimal = pawn.RaceProps != null && pawn.RaceProps.Animal;
 
-            // --- 新增核心邏輯：如果是透過你的自定義按鈕生成的獸群，無條件強制移除狂亂症 (Scaria) ---
+            // --- 核心邏輯 A：自定義獸群處理 (包含溫馴開關) ---
             if (isAnimal && CustomRaidGenerator.isSpawningAnimal)
             {
                 if (pawn.health != null && pawn.health.hediffSet != null)
                 {
+                    // 無條件移除狂亂症 (防止腐爛)
                     Hediff scaria = pawn.health.hediffSet.GetFirstHediffOfDef(HediffDefOf.Scaria);
-                    if (scaria != null)
-                    {
-                        pawn.health.RemoveHediff(scaria);
-                    }
+                    if (scaria != null) pawn.health.RemoveHediff(scaria);
                 }
-            }
-            // ---------------------------------------------------------------------------------
 
+                // 根據開關決定是否解除殺戮狀態
+                if (CustomRaidGenerator.keepAnimalsTame)
+                {
+                    pawn.mindState?.mentalStateHandler?.Reset();
+                    pawn.jobs?.StopAll();
+                }
+
+                // 自定義獸群處理完畢，跳過後面的全局處理
+                return;
+            }
+
+            // --- 核心邏輯 B：全局制裁處理 (保留您原本的詳細過濾) ---
             bool shouldStrip = (isAnimal && QuestSchedulerMod.settings.stripAnimals) || (!isAnimal && QuestSchedulerMod.settings.stripEnemies);
             bool shouldParalyze = (isAnimal && QuestSchedulerMod.settings.paralysisAnimals) || (!isAnimal && QuestSchedulerMod.settings.paralysisEnemies);
 
@@ -63,6 +73,7 @@ namespace QuestScheduler
                         }
                         else if (h.def.isBad)
                         {
+                            // --- 保留您原本針對特殊生物狀態的詳細過濾標籤 ---
                             string defNameLow = h.def.defName.ToLower();
                             if (!defNameLow.Contains("shambler") &&
                                 !defNameLow.Contains("ghoul") &&

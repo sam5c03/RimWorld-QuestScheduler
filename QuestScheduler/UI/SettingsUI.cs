@@ -12,6 +12,12 @@ namespace QuestScheduler
         private static SettingsTab currentTab = SettingsTab.Quests;
         private static Vector2 scrollPos = Vector2.zero;
         private static Vector2 customQuestScrollPos = Vector2.zero;
+        private static string cqPointsBuf;
+        private static string cqPawnCountBuf;
+        private static string cqAgeMinBuf;
+        private static string cqAgeMaxBuf;
+        private static string cqTraitsMinBuf;
+        private static string cqTraitsMaxBuf;
 
         public static void DoSettingsWindowContents(Rect inRect)
         {
@@ -131,16 +137,20 @@ namespace QuestScheduler
                 listing.Gap(10f);
 
                 listing.Label("3. 規模點數:");
-                Rect ptsRect = listing.GetRect(30f); string ptsBuf = settings.customQuestPoints.ToString("F0");
-                Widgets.TextFieldNumeric(ptsRect.LeftPart(0.2f), ref settings.customQuestPoints, ref ptsBuf, 0f, 100000f);
+                if (cqPointsBuf == null) cqPointsBuf = settings.customQuestPoints.ToString("F0");
+                Rect ptsRect = listing.GetRect(30f);
+                Widgets.TextFieldNumeric(ptsRect.LeftPart(0.2f), ref settings.customQuestPoints, ref cqPointsBuf, 0f, 100000f);
+                float oldPts = settings.customQuestPoints;
                 settings.customQuestPoints = Widgets.HorizontalSlider(ptsRect.RightPart(0.75f), settings.customQuestPoints, 0f, 20000f);
-                listing.Gap(10f);
+                if (settings.customQuestPoints != oldPts) cqPointsBuf = settings.customQuestPoints.ToString("F0");
 
                 listing.Label("4. 生成人數 (輸入 -1 代表由系統預設決定):");
-                Rect countRect = listing.GetRect(30f); string countBuf = settings.customQuestPawnCount.ToString();
-                Widgets.TextFieldNumeric(countRect.LeftPart(0.2f), ref settings.customQuestPawnCount, ref countBuf, -1, 200);
+                if (cqPawnCountBuf == null) cqPawnCountBuf = settings.customQuestPawnCount.ToString();
+                Rect countRect = listing.GetRect(30f);
+                Widgets.TextFieldNumeric(countRect.LeftPart(0.2f), ref settings.customQuestPawnCount, ref cqPawnCountBuf, -1, 200);
+                int oldCount = settings.customQuestPawnCount;
                 settings.customQuestPawnCount = (int)Widgets.HorizontalSlider(countRect.RightPart(0.75f), settings.customQuestPawnCount, -1f, 200f);
-                listing.Gap(10f);
+                if (settings.customQuestPawnCount != oldCount) cqPawnCountBuf = settings.customQuestPawnCount.ToString();
 
                 Rect cxenoRect = listing.GetRect(30f); Widgets.Label(cxenoRect.LeftPart(0.2f), "5. 人種選擇:");
                 if (Widgets.ButtonText(cxenoRect.RightPart(0.75f), settings.customQuestXenotype?.LabelCap ?? "系統預設 (不介入生成)"))
@@ -151,13 +161,22 @@ namespace QuestScheduler
                 }
                 listing.Gap(10f);
 
+                // 6. 年齡範圍修正 (Min & Max)
                 listing.Label("6. 生成角色年齡範圍:");
-                Rect ageRect = listing.GetRect(30f); string minAgeBuf = settings.customQuestAgeMin.ToString(); string maxAgeBuf = settings.customQuestAgeMax.ToString();
-                Widgets.TextFieldNumeric(ageRect.LeftPart(0.1f), ref settings.customQuestAgeMin, ref minAgeBuf, 14, 120); Widgets.Label(new Rect(ageRect.x + ageRect.width * 0.12f, ageRect.y, 20f, 30f), "-");
-                Widgets.TextFieldNumeric(new Rect(ageRect.x + ageRect.width * 0.15f, ageRect.y, ageRect.width * 0.1f, 30f), ref settings.customQuestAgeMax, ref maxAgeBuf, 14, 120);
-                IntRange ageRange = new IntRange(settings.customQuestAgeMin, settings.customQuestAgeMax); Widgets.IntRange(ageRect.RightPart(0.7f), 9991, ref ageRange, 14, 120);
-                settings.customQuestAgeMin = ageRange.min; settings.customQuestAgeMax = ageRange.max;
-                listing.Gap(10f);
+                if (cqAgeMinBuf == null) cqAgeMinBuf = settings.customQuestAgeMin.ToString();
+                if (cqAgeMaxBuf == null) cqAgeMaxBuf = settings.customQuestAgeMax.ToString();
+                Rect ageRect = listing.GetRect(30f);
+
+                Widgets.TextFieldNumeric(ageRect.LeftPart(0.1f), ref settings.customQuestAgeMin, ref cqAgeMinBuf, 14, 120);
+                Widgets.TextFieldNumeric(new Rect(ageRect.x + ageRect.width * 0.15f, ageRect.y, ageRect.width * 0.1f, 30f), ref settings.customQuestAgeMax, ref cqAgeMaxBuf, 14, 120);
+
+                IntRange ageRange = new IntRange(settings.customQuestAgeMin, settings.customQuestAgeMax);
+                Widgets.IntRange(ageRect.RightPart(0.7f), 9991, ref ageRange, 14, 120);
+                if (settings.customQuestAgeMin != ageRange.min || settings.customQuestAgeMax != ageRange.max)
+                {
+                    settings.customQuestAgeMin = ageRange.min; settings.customQuestAgeMax = ageRange.max;
+                    cqAgeMinBuf = settings.customQuestAgeMin.ToString(); cqAgeMaxBuf = settings.customQuestAgeMax.ToString();
+                }
 
                 listing.Label("7. 性別比例:");
                 Rect genRect = listing.GetRect(30f); string ratioBuf = settings.customQuestFemaleRatio.ToString("F0");
