@@ -367,3 +367,4 @@ FodyWeavers.xsd
 bin/
 obj/
 .csproj
+.7z
